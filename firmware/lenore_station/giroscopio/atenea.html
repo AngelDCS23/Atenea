@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Atenea Flight Computer</title>
+    <style>
+        body { 
+            background-color: #1a1a24; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            text-align: center; margin: 0; padding: 20px;
+        }
+        h1 { color: #00d2ff; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 40px;}
+        
+        .dashboard {
+            display: flex; justify-content: center; align-items: center; gap: 40px;
+            flex-wrap: wrap;
+        }
+
+        /* Estilo base para los 3 instrumentos */
+        .instrument {
+            width: 250px; height: 250px;
+            border-radius: 50%;
+            background: #2b2b36;
+            border: 8px solid #444;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.5);
+            position: relative; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+
+        .instrument-title {
+            position: absolute; top: 15px; font-size: 14px; font-weight: bold; color: #aaa; z-index: 10;
+        }
+
+        /* 1. VELOCÍMETRO & 3. ALTÍMETRO */
+        .digital-value {
+            font-size: 40px; font-weight: bold; font-family: monospace; z-index: 10; text-shadow: 0 0 10px rgba(0,255,255,0.5);
+        }
+        .unit { font-size: 14px; color: #888; z-index: 10; }
+        
+        .ring {
+            position: absolute; width: 90%; height: 90%; border-radius: 50%;
+            border: 4px dashed #555; z-index: 1;
+        }
+        
+        .needle {
+            position: absolute; width: 4px; height: 110px; background: #ff3366;
+            bottom: 50%; left: calc(50% - 2px);
+            transform-origin: bottom center; transform: rotate(-135deg);
+            transition: transform 0.1s ease-out; z-index: 5;
+            border-radius: 4px 4px 0 0; box-shadow: 0 0 10px #ff3366;
+        }
+
+        /* 2. HORIZONTE ARTIFICIAL */
+        .horizon-bg {
+            width: 600px; height: 600px;
+            background: linear-gradient(to bottom, #1e90ff 50%, #8b4513 50%);
+            position: absolute; top: -175px; left: -175px;
+            transition: transform 0.1s linear; z-index: 2;
+        }
+        .plane-symbol {
+            position: absolute; top: 50%; left: 50%; width: 140px; height: 4px; background: #ffcc00;
+            transform: translate(-50%, -50%); z-index: 5; box-shadow: 0 0 5px black;
+        }
+        .plane-symbol::before {
+            content: ''; position: absolute; left: 65px; top: -5px; width: 10px; height: 10px;
+            background: #ffcc00; border-radius: 50%;
+        }
+
+        /* Controles y conexión */
+        .controls { margin-top: 50px; display: inline-block;}
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #0078d7; color: white; border: none; border-radius: 5px; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.5);}
+        button:hover { background: #005a9e; }
+    </style>
+</head>
+<body>
+
+    <h1>Aviónica de Atenea</h1>
+    
+    <div class="dashboard">
+        <div class="instrument">
+            <div class="instrument-title">VELOCIDAD</div>
+            <div class="ring"></div>
+            <div class="needle" id="needle-speed"></div>
+            <div class="digital-value" id="val-speed">0</div>
+            <div class="unit">m/s</div>
+        </div>
+
+        <div class="instrument" style="border-color: #555;">
+            <div class="instrument-title" style="color: white; text-shadow: 1px 1px 2px black;">ACTITUD</div>
+            <div class="horizon-bg" id="horizon-layer"></div>
+            <div class="plane-symbol"></div>
+        </div>
+
+        <div class="instrument">
+            <div class="instrument-title">ALTITUD</div>
+            <div class="ring"></div>
+            <div class="needle" id="needle-alt"></div>
+            <div class="digital-value" id="val-alt">0</div>
+            <div class="unit">metros AGL</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="btn-connect">🔌 Conectar Telemetría USB</button>
+    </div>
+
+    <script>
+        // Referencias al DOM
+        const horizon = document.getElementById('horizon-layer');
+        const speedVal = document.getElementById('val-speed');
+        const speedNeedle = document.getElementById('needle-speed');
+        const altVal = document.getElementById('val-alt');
+        const altNeedle = document.getElementById('needle-alt');
+        
+        // Función principal de dibujo
+        function actualizarDashboard(pitch, roll, altitud, velocidad) {
+            // 1. Horizonte (Pitch y Roll)
+            let despY = pitch * 3; // Escala de píxeles por grado
+            horizon.style.transform = `rotate(${roll}deg) translateY(${despY}px)`;
+
+            // 2. Altímetro
+            altVal.innerText = Math.round(altitud);
+            let gradosAlt = (altitud % 1000) * (360 / 1000); 
+            altNeedle.style.transform = `rotate(${gradosAlt}deg)`;
+
+            // 3. Velocímetro
+            speedVal.innerText = Math.round(velocidad);
+            let gradosVel = -135 + (velocidad / 343) * 270;
+            if(gradosVel > 135) gradosVel = 135; 
+            speedNeedle.style.transform = `rotate(${gradosVel}deg)`;
+        }
+
+        // --- CONEXIÓN USB REAL ---
+        const btnConnect = document.getElementById('btn-connect');
+        let port, reader;
+
+        btnConnect.addEventListener('click', async () => {
+            try {
+                port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 57600 }); 
+                
+                // === LAS 2 LÍNEAS MÁGICAS PARA EL ESP32-S3 ===
+                // Forzamos las señales DTR y RTS para despertar el envío por USB
+                await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+                // ==============================================
+
+                const decoder = new TextDecoderStream();
+                port.readable.pipeTo(decoder.writable);
+                reader = decoder.readable.getReader();
+
+                btnConnect.style.background = "#28a745";
+                btnConnect.innerText = "🚀 Conectado a Atenea";
+                leerDatos();
+            } catch (error) {
+                alert("Error: " + error.message + "\nSi estás en Linux, revisa los permisos del puerto.");
+                console.error(error);
+            }
+        });
+
+        async function leerDatos() {
+            let buffer = "";
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                
+                buffer += value;
+                let lineas = buffer.split('\n');
+                
+                if (lineas.length > 1) {
+                    let datosStr = lineas[0].trim();
+                    buffer = lineas.slice(1).join('\n'); 
+
+                    // Esperamos el formato: pitch,roll,altitud,velocidad
+                    let valores = datosStr.split(',');
+                    
+                    if (valores.length >= 2) {
+                        let pitch = parseFloat(valores[0]);
+                        let roll = parseFloat(valores[1]);
+                        let altitud = valores[2] ? parseFloat(valores[2]) : 0;
+                        let velocidad = valores[3] ? parseFloat(valores[3]) : 0;
+
+                        if(!isNaN(pitch) && !isNaN(roll)){
+                            actualizarDashboard(pitch, roll, altitud, velocidad);
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

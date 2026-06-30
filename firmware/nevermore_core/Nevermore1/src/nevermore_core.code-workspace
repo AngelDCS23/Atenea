@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "nevermore_core",
+			"path": "../.."
+		},
+		{
+			"name": "Nevermore1",
+			"path": "../../../../../../Documentos/PlatformIO/Projects/Nevermore1"
+		}
+	],
+	"settings": {}
+}
