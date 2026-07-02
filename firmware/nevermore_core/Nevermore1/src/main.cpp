@@ -1,18 +1,26 @@
+#include <Arduino.h>
 #include "I2Cdev.h"
 #include "MPU6050.h"
 #include "Wire.h"
+#include <ESP32Servo.h> 
 
 MPU6050 sensor;
+
+// --- CONFIGURACIÓN DEL ÚNICO SERVO ---
+Servo servoPitch;
+const int PIN_SERVO_PITCH = D1; 
 
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
 
-// Nuevas variables para guardar los ángulos calculados
 float pitch = 0.0;
 float roll = 0.0;
 
-// Reloj para medir el tiempo entre ciclos (necesario para el giroscopio)
 unsigned long tiempoAnterior;
+
+// --- CONSTANTES DE CONTROL ---
+float Kp = 1.5; 
+const int CENTRO_SERVO = 90;
 
 void setup() {
   Serial.begin(57600);
@@ -25,41 +33,40 @@ void setup() {
       Serial.println("Error al iniciar el sensor");
   }
 
-  // Guardamos el tiempo justo antes de empezar a leer
+  // Inicializar y centrar el servo
+  servoPitch.attach(PIN_SERVO_PITCH, 500, 2500); 
+  servoPitch.write(CENTRO_SERVO);
+
   tiempoAnterior = micros();
 }
 
 void loop() {
-  // 1. LECTURA (Intacta, tal como la tenías)
   sensor.getAcceleration(&ax, &ay, &az);
   sensor.getRotation(&gx, &gy, &gz);
 
-  // 2. MATEMÁTICAS (Inyectadas en medio)
-  // Calculamos la diferencia de tiempo (dt) en segundos
   unsigned long tiempoActual = micros();
   float dt = (tiempoActual - tiempoAnterior) / 1000000.0;
   tiempoAnterior = tiempoActual;
 
-  // Calculamos la inclinación a través de la gravedad (Acelerómetro)
   float accelRoll = atan2(ay, az) * 180.0 / M_PI;
   float accelPitch = atan2(-ax, sqrt((long)ay * ay + (long)az * az)) * 180.0 / M_PI;
 
-  // Calculamos la velocidad de rotación pura (Giroscopio)
   float gyroX_dps = gx / 131.0;
   float gyroY_dps = gy / 131.0;
 
-  // Aplicamos el Filtro Complementario (98% Gyro + 2% Acel)
   roll = 0.98 * (roll + gyroX_dps * dt) + 0.02 * accelRoll;
   pitch = 0.98 * (pitch + gyroY_dps * dt) + 0.02 * accelPitch;
 
-  // 3. ENVÍO DE DATOS AL DASHBOARD
-  // Formato: pitch,roll
+  // ==========================================
+  // CONTROL DE VUELO (1 EJE)
+  // ==========================================
+  int anguloPitch = CENTRO_SERVO - (pitch * Kp);
+  anguloPitch = constrain(anguloPitch, 60, 120);
+  servoPitch.write(anguloPitch);
+
   Serial.print(pitch);
   Serial.print(",");
   Serial.println(roll);
 
-  // Reducido de 100ms a 10ms. 
-  // Esto hace que lea a ~100Hz, vital para que el horizonte artificial 
-  // se mueva fluido y la integración del giroscopio no acumule error.
   delay(10);
 }
