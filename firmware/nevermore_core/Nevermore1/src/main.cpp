@@ -27,6 +27,12 @@ void setup() {
   Wire.begin();
   sensor.initialize();
 
+  // ==========================================
+  // MODO COHETE: AMPLIAR RANGOS DEL SENSOR
+  // ==========================================
+  sensor.setFullScaleGyroRange(MPU6050_GYRO_FS_2000); // Límite a 2000 grados/segundo
+  sensor.setFullScaleAccelRange(MPU6050_ACCEL_FS_8);  // Límite a 8G de fuerza
+
   if (sensor.testConnection()) {
       Serial.println("Sensor iniciado correctamente");
   } else {
@@ -49,13 +55,15 @@ void loop() {
   tiempoAnterior = tiempoActual;
 
   float accelRoll = atan2(ay, az) * 180.0 / M_PI;
-  float accelPitch = atan2(-ax, sqrt((long)ay * ay + (long)az * az)) * 180.0 / M_PI;
+  // --- VACUNA CONTRA EL "nan" (Usar floats para evitar desbordamiento) ---
+  float accelPitch = atan2(-ax, sqrt((float)ay * (float)ay + (float)az * (float)az)) * 180.0 / M_PI;
 
-  float gyroX_dps = gx / 131.0;
-  float gyroY_dps = gy / 131.0;
+  // --- NUEVA MATEMÁTICA PARA EL GIROSCOPIO (Acorde a los 2000 grados/s) ---
+  float gyroX_dps = gx / 16.4;
+  float gyroY_dps = gy / 16.4;
 
-  roll = 0.98 * (roll + gyroX_dps * dt) + 0.02 * accelRoll;
-  pitch = 0.98 * (pitch + gyroY_dps * dt) + 0.02 * accelPitch;
+  roll = 0.95 * (roll + gyroX_dps * dt) + 0.05 * accelRoll;
+  pitch = 0.95 * (pitch + gyroY_dps * dt) + 0.05 * accelPitch;
 
   // ==========================================
   // CONTROL DE VUELO (1 EJE)
