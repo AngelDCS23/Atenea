@@ -2,20 +2,20 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Atenea Flight Computer</title>
+    <title>Atenea Flight Computer - GCS</title>
     <style>
         body { 
             background-color: #1a1a24; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             text-align: center; margin: 0; padding: 20px;
         }
-        h1 { color: #00d2ff; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 40px;}
+        h1 { color: #00d2ff; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;}
+        .status-bar { margin-bottom: 30px; font-weight: bold; color: #ff3333; }
         
         .dashboard {
             display: flex; justify-content: center; align-items: center; gap: 40px;
             flex-wrap: wrap;
         }
 
-        /* Estilo base para los 3 instrumentos */
         .instrument {
             width: 250px; height: 250px;
             border-radius: 50%;
@@ -30,16 +30,10 @@
             position: absolute; top: 15px; font-size: 14px; font-weight: bold; color: #aaa; z-index: 10;
         }
 
-        /* 1. VELOCÍMETRO & 3. ALTÍMETRO */
-        .digital-value {
-            font-size: 40px; font-weight: bold; font-family: monospace; z-index: 10; text-shadow: 0 0 10px rgba(0,255,255,0.5);
-        }
+        .digital-value { font-size: 40px; font-weight: bold; font-family: monospace; z-index: 10; text-shadow: 0 0 10px rgba(0,255,255,0.5); }
         .unit { font-size: 14px; color: #888; z-index: 10; }
         
-        .ring {
-            position: absolute; width: 90%; height: 90%; border-radius: 50%;
-            border: 4px dashed #555; z-index: 1;
-        }
+        .ring { position: absolute; width: 90%; height: 90%; border-radius: 50%; border: 4px dashed #555; z-index: 1; }
         
         .needle {
             position: absolute; width: 4px; height: 110px; background: #ff3366;
@@ -49,7 +43,6 @@
             border-radius: 4px 4px 0 0; box-shadow: 0 0 10px #ff3366;
         }
 
-        /* 2. HORIZONTE ARTIFICIAL */
         .horizon-bg {
             width: 600px; height: 600px;
             background: linear-gradient(to bottom, #1e90ff 50%, #8b4513 50%);
@@ -64,18 +57,15 @@
             content: ''; position: absolute; left: 65px; top: -5px; width: 10px; height: 10px;
             background: #ffcc00; border-radius: 50%;
         }
-
-        /* Controles y conexión */
-        .controls { margin-top: 50px; display: inline-block;}
-        button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #0078d7; color: white; border: none; border-radius: 5px; font-weight: bold; transition: 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.5);}
-        button:hover { background: #005a9e; }
     </style>
 </head>
 <body>
 
-    <h1>Aviónica de Atenea</h1>
+    <h1>🚀 Estación de Tierra Atenea</h1>
+    <div id="status" class="status-bar">Desconectado del servidor Node.js 🔴</div>
     
     <div class="dashboard">
+        <!-- VELOCÍMETRO -->
         <div class="instrument">
             <div class="instrument-title">VELOCIDAD</div>
             <div class="ring"></div>
@@ -84,12 +74,14 @@
             <div class="unit">m/s</div>
         </div>
 
+        <!-- HORIZONTE -->
         <div class="instrument" style="border-color: #555;">
             <div class="instrument-title" style="color: white; text-shadow: 1px 1px 2px black;">ACTITUD</div>
             <div class="horizon-bg" id="horizon-layer"></div>
             <div class="plane-symbol"></div>
         </div>
 
+        <!-- ALTÍMETRO -->
         <div class="instrument">
             <div class="instrument-title">ALTITUD</div>
             <div class="ring"></div>
@@ -97,94 +89,83 @@
             <div class="digital-value" id="val-alt">0</div>
             <div class="unit">metros AGL</div>
         </div>
+
+        <!-- TOBERA (TVC) -->
+        <div class="instrument" style="border-color: #ffcc00; overflow: visible;">
+            <div class="instrument-title" style="color: #ffcc00; text-shadow: 1px 1px 2px black;">TOBERA (PITCH)</div>
+            <div style="position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 10px;">
+                <!-- Cuerpo del cohete -->
+                <div style="width: 40px; height: 90px; background: #ddd; border-radius: 5px 5px 0 0; z-index: 2; border: 2px solid #555;">
+                    <div style="text-align: center; color: #333; font-weight: bold; margin-top: 30px; font-size: 10px; transform: rotate(-90deg);">ATENEA</div>
+                </div>
+                <!-- Tobera pivotante -->
+                <div id="nozzle" style="width: 30px; height: 35px; background: linear-gradient(to bottom, #888, #444); clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%); transform-origin: top center; transition: transform 0.05s linear; z-index: 1; border-top: 2px solid #222;">
+                    <!-- Fuego simulado -->
+                    <div style="width: 100%; height: 40px; background: linear-gradient(to bottom, #ff9900, #ff3300, transparent); margin-top: 35px; opacity: 0.8; filter: blur(3px); transform-origin: top center; animation: flicker 0.1s infinite alternate;"></div>
+                </div>
+            </div>
+            <div class="digital-value" id="val-servo" style="position: absolute; bottom: 20px; font-size: 24px; color: #ffcc00; text-shadow: 0 0 10px rgba(255,204,0,0.5);">90°</div>
+        </div>
     </div>
 
-    <div class="controls">
-        <button id="btn-connect">🔌 Conectar Telemetría USB</button>
-    </div>
+    <style>
+        @keyframes flicker {
+            0% { transform: scaleX(1) scaleY(1); opacity: 0.8; }
+            100% { transform: scaleX(1.1) scaleY(1.2); opacity: 1; }
+        }
+    </style>
 
     <script>
-        // Referencias al DOM
         const horizon = document.getElementById('horizon-layer');
         const speedVal = document.getElementById('val-speed');
         const speedNeedle = document.getElementById('needle-speed');
         const altVal = document.getElementById('val-alt');
         const altNeedle = document.getElementById('needle-alt');
+        const nozzle = document.getElementById('nozzle');
+        const servoVal = document.getElementById('val-servo');
+        const statusText = document.getElementById('status');
         
-        // Función principal de dibujo
-        function actualizarDashboard(pitch, roll, altitud, velocidad) {
-            // 1. Horizonte (Pitch y Roll)
-            let despY = pitch * 3; // Escala de píxeles por grado
+        function actualizarDashboard(pitch, roll, altitud, velocidad, servoPitch) {
+            let despY = pitch * 3; 
             horizon.style.transform = `rotate(${roll}deg) translateY(${despY}px)`;
 
-            // 2. Altímetro
             altVal.innerText = Math.round(altitud);
             let gradosAlt = (altitud % 1000) * (360 / 1000); 
             altNeedle.style.transform = `rotate(${gradosAlt}deg)`;
 
-            // 3. Velocímetro
             speedVal.innerText = Math.round(velocidad);
             let gradosVel = -135 + (velocidad / 343) * 270;
             if(gradosVel > 135) gradosVel = 135; 
             speedNeedle.style.transform = `rotate(${gradosVel}deg)`;
+
+            // --- ANIMACIÓN DE LA TOBERA ---
+            let gradosServo = (servoPitch || 90) - 90;
+            nozzle.style.transform = `rotate(${-gradosServo}deg)`; // Refleja el movimiento físico del servo
+            servoVal.innerText = `${servoPitch || 90}°`;
         }
 
-        // --- CONEXIÓN USB REAL ---
-        const btnConnect = document.getElementById('btn-connect');
-        let port, reader;
+        // --- CONEXIÓN AUTOMÁTICA WEBSOCKET A NODE.JS ---
+        function iniciarConexion() {
+            const ws = new WebSocket('ws://localhost:8765');
 
-        btnConnect.addEventListener('click', async () => {
-            try {
-                port = await navigator.serial.requestPort();
-                await port.open({ baudRate: 57600 }); 
-                
-                // === LAS 2 LÍNEAS MÁGICAS PARA EL ESP32-S3 ===
-                // Forzamos las señales DTR y RTS para despertar el envío por USB
-                await port.setSignals({ dataTerminalReady: true, requestToSend: true });
-                // ==============================================
+            ws.onopen = () => {
+                statusText.innerText = "Conectado al Motor de Telemetría 🟢";
+                statusText.style.color = "#28a745";
+            };
 
-                const decoder = new TextDecoderStream();
-                port.readable.pipeTo(decoder.writable);
-                reader = decoder.readable.getReader();
+            ws.onmessage = (evento) => {
+                const datos = JSON.parse(evento.data);
+                actualizarDashboard(datos.pitch, datos.roll, datos.altitud, datos.velocidad, datos.servo_pitch);
+            };
 
-                btnConnect.style.background = "#28a745";
-                btnConnect.innerText = "🚀 Conectado a Atenea";
-                leerDatos();
-            } catch (error) {
-                alert("Error: " + error.message + "\nSi estás en Linux, revisa los permisos del puerto.");
-                console.error(error);
-            }
-        });
-
-        async function leerDatos() {
-            let buffer = "";
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) break;
-                
-                buffer += value;
-                let lineas = buffer.split('\n');
-                
-                if (lineas.length > 1) {
-                    let datosStr = lineas[0].trim();
-                    buffer = lineas.slice(1).join('\n'); 
-
-                    // Esperamos el formato: pitch,roll,altitud,velocidad
-                    let valores = datosStr.split(',');
-                    
-                    if (valores.length >= 2) {
-                        let pitch = parseFloat(valores[0]);
-                        let roll = parseFloat(valores[1]);
-                        let altitud = valores[2] ? parseFloat(valores[2]) : 0;
-                        let velocidad = valores[3] ? parseFloat(valores[3]) : 0;
-
-                        if(!isNaN(pitch) && !isNaN(roll)){
-                            actualizarDashboard(pitch, roll, altitud, velocidad);
-                        }
-                    }
-                }
-            }
+            ws.onclose = () => {
+                statusText.innerText = "Conexión perdida. Reconectando... 🔴";
+                statusText.style.color = "#ff3333";
+                setTimeout(iniciarConexion, 2000); // Intenta reconectar cada 2 segundos
+            };
         }
+
+        iniciarConexion();
     </script>
 </body>
 </html>
