@@ -1,0 +1,40 @@
+#include <Arduino.h>
+#include <TinyGPSPlus.h>
+
+#define GPS_RX_PIN 44
+#define GPS_TX_PIN 43
+
+TinyGPSPlus gps;
+
+unsigned long ultimoAviso = 0;
+
+void setup() {
+  Serial.begin(115200);
+  Serial1.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+  
+  delay(2000);
+  Serial.println("--- SISTEMA DE NAVEGACION NEVERMORE INICIADO ---");
+  Serial.println("Esperando enlace con satelites...");
+}
+
+void loop() {
+  while (Serial1.available() > 0) {
+    gps.encode(Serial1.read());
+  }
+
+  if (gps.location.isUpdated()) {
+    Serial.print("Latitud: "); 
+    Serial.print(gps.location.lat(), 6);
+    Serial.print(" | Longitud: "); 
+    Serial.print(gps.location.lng(), 6);
+    Serial.print(" | Altitud: "); 
+    Serial.print(gps.altitude.meters());
+    Serial.print(" m | Satélites conectados: "); 
+    Serial.println(gps.satellites.value());
+  }
+
+  if (millis() - ultimoAviso > 5000 && gps.satellites.value() == 0) {
+    Serial.println("Buscando satélites...");
+    ultimoAviso = millis();
+  }
+}

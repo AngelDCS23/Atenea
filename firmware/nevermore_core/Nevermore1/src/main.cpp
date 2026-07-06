@@ -6,51 +6,62 @@
 
 MPU6050 sensor;
 
-// --- CONFIGURACIÓN DEL ÚNICO SERVO ---
-Servo servoPitch;
-const int PIN_SERVO_PITCH = D1; 
+Servo servoPitch1;
+Servo servoPitch2;
+const int PIN_SERVO_PITCH1 = 1;
+const int PIN_SERVO_PITCH2 = 2; 
+
+Servo servoRoll;
+const int PIN_SERVO_ROLL = 3; 
 
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
 
 float pitch = 0.0;
 float roll = 0.0;
-
 unsigned long tiempoAnterior;
 
 const float SETPOINT = 0.0; 
 const int CENTRO_SERVO = 90;
 
-// Constantes de "Agresividad" (Se necesita una revisión de estos valores, el servor actual (SG90) aún sigue mostrando un temblor en variaciones leves.)
-float Kp = 1.0;  // Fuerza bruta
-float Ki = 0.0;  // Corrección a largo plazo
-float Kd = 0.05; // Freno amortiguador
+float Kp = 1.0;  
+float Ki = 0.0;  
+float Kd = 0.05; 
 
-// Memoria del PID
-float errorPrevio = 0.0;
-float errorIntegral = 0.0;
+float errorPrevioPitch = 0.0;
+float errorIntegralPitch = 0.0;
+
+float errorPrevioRoll = 0.0;
+float errorIntegralRoll = 0.0;
 
 void setup() {
-  Serial.begin(57600);
-  Wire.begin();
+  Serial.begin(115200);
+  Wire.begin(5, 6); 
+  
   sensor.initialize();
 
   sensor.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
   sensor.setFullScaleAccelRange(MPU6050_ACCEL_FS_8);
 
   if (sensor.testConnection()) {
-      Serial.println("Sensor iniciado correctamente");
+      Serial.println("Sensor MPU6050 iniciado correctamente con GPIO 5 y 6");
   } else {
-      Serial.println("Error al iniciar el sensor");
+      Serial.println("Error al iniciar el sensor MPU6050");
   }
 
-  servoPitch.attach(PIN_SERVO_PITCH, 500, 2500); 
-  servoPitch.write(CENTRO_SERVO);
+  servoPitch1.attach(PIN_SERVO_PITCH1, 500, 2500); 
+  servoPitch2.attach(PIN_SERVO_PITCH2, 500, 2500); 
+  servoPitch1.write(CENTRO_SERVO);
+  servoPitch2.write(CENTRO_SERVO);
+
+  servoRoll.attach(PIN_SERVO_ROLL, 500, 2500);
+  servoRoll.write(CENTRO_SERVO);
 
   tiempoAnterior = micros();
 }
 
 void loop() {
+  // 1. LEER SENSOR
   sensor.getAcceleration(&ax, &ay, &az);
   sensor.getRotation(&gx, &gy, &gz);
 
@@ -67,35 +78,44 @@ void loop() {
   roll = 0.95 * (roll + gyroX_dps * dt) + 0.05 * accelRoll;
   pitch = 0.95 * (pitch + gyroY_dps * dt) + 0.05 * accelPitch;
 
-
-  float errorActual = SETPOINT - pitch;
-  float proporcional = Kp * errorActual;
+  float errorPitch = SETPOINT - pitch;
   
-  errorIntegral = errorIntegral + (errorActual * dt);
-  errorIntegral = constrain(errorIntegral, -20.0, 20.0); // Anti-Windup REVISAR
+  errorIntegralPitch += (errorPitch * dt);
+  errorIntegralPitch = constrain(errorIntegralPitch, -20.0, 20.0); 
 
-  float integral = Ki * errorIntegral;
-  float derivativo = Kd * ((errorActual - errorPrevio) / dt);
-  float salidaPID = proporcional + integral + derivativo;
+  float derivativoPitch = (errorPitch - errorPrevioPitch) / dt;
+  float salidaPID_Pitch = (Kp * errorPitch) + (Ki * errorIntegralPitch) + (Kd * derivativoPitch);
+  errorPrevioPitch = errorPitch;
 
-  errorPrevio = errorActual;
+  if (abs(salidaPID_Pitch) < 1.0) salidaPID_Pitch = 0.0;
 
-  // --- FILTRO DE BANDA MUERTA ---
-  // Ignoramos ruidos menores a 1 grado para evitar vibraciones REVISAR (No estoy seguro si es por los ajustes de agresividad pero el servo (SG90) tiene unos leves temblores que aún no he conseguido identificar)
-  if (abs(salidaPID) < 1.0) {
-      salidaPID = 0.0;
-  }
+  int anguloPitch = CENTRO_SERVO - salidaPID_Pitch;
+  anguloPitch = constrain(anguloPitch, 60, 120);
 
-  int anguloPitch = CENTRO_SERVO - salidaPID;
-  anguloPitch = constrain(anguloPitch, 60, 120); // Límite mecánico de la tobera
-  servoPitch.write(anguloPitch);
+  servoPitch1.write(anguloPitch);
+  servoPitch2.write(anguloPitch); 
 
+
+  float errorRoll = SETPOINT - roll;
   
-  Serial.print(pitch);
-  Serial.print(",");
-  Serial.print(roll);
-  Serial.print(",0.0,0.0,"); // Altitud y Velocidad enviadas falsas como 0.0 por ahora
-  Serial.println(anguloPitch); // Enviamos qué está decidiendo hacer el servo
+  errorIntegralRoll += (errorRoll * dt);
+  errorIntegralRoll = constrain(errorIntegralRoll, -20.0, 20.0);
 
-  delay(10);
+  float derivativoRoll = (errorRoll - errorPrevioRoll) / dt;
+  float salidaPID_Roll = (Kp * errorRoll) + (Ki * errorIntegralRoll) + (Kd * derivativoRoll);
+  errorPrevioRoll = errorRoll;
+
+  if (abs(salidaPID_Roll) < 1.0) salidaPID_Roll = 0.0;
+
+  int anguloRoll = CENTRO_SERVO + salidaPID_Roll; 
+  anguloRoll = constrain(anguloRoll, 60, 120);
+
+  servoRoll.write(anguloRoll);
+
+  Serial.print("Pitch:"); Serial.print(pitch); Serial.print(",");
+  Serial.print("Roll:");  Serial.print(roll);  Serial.print(",");
+  Serial.print("Angulo_Pitch:"); Serial.print(anguloPitch); Serial.print(",");
+  Serial.print("Angulo_Roll:");  Serial.println(anguloRoll);
+
+  delay(10); 
 }
