@@ -6,62 +6,82 @@
 
 MPU6050 sensor;
 
-Servo servoPitch1;
-Servo servoPitch2;
-const int PIN_SERVO_PITCH1 = 1;
-const int PIN_SERVO_PITCH2 = 2; 
+// --- CONFIGURACIÓN DE LOS SERVOS ---
+Servo servo_EjeX;     // El que se moverá con la inclinación X
+Servo servo_EjeY_1;   // El que se moverá con la inclinación Y (Motor 1)
+Servo servo_EjeY_2;   // El que se moverá con la inclinación Y (Motor 2)
 
-Servo servoRoll;
-const int PIN_SERVO_ROLL = 3; 
+const int PIN_SERVO_X = D0; 
+const int PIN_SERVO_Y1 = D1;
+const int PIN_SERVO_Y2 = D2;
 
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
 
-float pitch = 0.0;
-float roll = 0.0;
+float pitch = 0.0; // Lo usaremos como Eje X
+float roll = 0.0;  // Lo usaremos como Eje Y
+
 unsigned long tiempoAnterior;
 
-const float SETPOINT = 0.0; 
+const float SETPOINT_X = 0.0; 
+const float SETPOINT_Y = 0.0;
 const int CENTRO_SERVO = 90;
 
-float Kp = 1.0;  
-float Ki = 0.0;  
-float Kd = 0.05; 
+// Constantes PID Eje X
+float KpX = 1.0;
+float KiX = 0.0;
+float KdX = 0.05;
 
-float errorPrevioPitch = 0.0;
-float errorIntegralPitch = 0.0;
+// Constantes PID Eje Y
+float KpY = 0.8;
+float KiY = 0.0;
+float KdY = 0.05;
 
-float errorPrevioRoll = 0.0;
-float errorIntegralRoll = 0.0;
+// Memoria del PID
+float errorPrevioX = 0.0;
+float errorIntegralX = 0.0;
+float errorPrevioY = 0.0;
+float errorIntegralY = 0.0;
 
 void setup() {
-  Serial.begin(115200);
-  Wire.begin(5, 6); 
-  
+  Serial.begin(57600);
+  Wire.begin();
   sensor.initialize();
 
   sensor.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
   sensor.setFullScaleAccelRange(MPU6050_ACCEL_FS_8);
 
   if (sensor.testConnection()) {
-      Serial.println("Sensor MPU6050 iniciado correctamente con GPIO 5 y 6");
+      Serial.println("Sensor iniciado correctamente");
   } else {
-      Serial.println("Error al iniciar el sensor MPU6050");
+      Serial.println("Error al iniciar el sensor");
   }
 
-  servoPitch1.attach(PIN_SERVO_PITCH1, 500, 2500); 
-  servoPitch2.attach(PIN_SERVO_PITCH2, 500, 2500); 
-  servoPitch1.write(CENTRO_SERVO);
-  servoPitch2.write(CENTRO_SERVO);
+  // 1. Asignar temporizadores independientes
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
 
-  servoRoll.attach(PIN_SERVO_ROLL, 500, 2500);
-  servoRoll.write(CENTRO_SERVO);
+  // 2. Definir la frecuencia
+  servo_EjeX.setPeriodHertz(50);
+  servo_EjeY_1.setPeriodHertz(50);
+  servo_EjeY_2.setPeriodHertz(50);
+
+  // 3. Conectar a los pines
+  servo_EjeX.attach(PIN_SERVO_X, 500, 2500);
+  servo_EjeY_1.attach(PIN_SERVO_Y1, 500, 2500);
+  servo_EjeY_2.attach(PIN_SERVO_Y2, 500, 2500);
+  
+  // 4. Centrar los motores
+  servo_EjeX.write(CENTRO_SERVO);
+  servo_EjeY_1.write(CENTRO_SERVO);
+  servo_EjeY_2.write(CENTRO_SERVO);
 
   tiempoAnterior = micros();
 }
 
 void loop() {
-  // 1. LEER SENSOR
   sensor.getAcceleration(&ax, &ay, &az);
   sensor.getRotation(&gx, &gy, &gz);
 
@@ -69,53 +89,69 @@ void loop() {
   float dt = (tiempoActual - tiempoAnterior) / 1000000.0;
   tiempoAnterior = tiempoActual;
 
+  // Cálculo de inclinación (X e Y)
   float accelRoll = atan2(ay, az) * 180.0 / M_PI;
   float accelPitch = atan2(-ax, sqrt((float)ay * (float)ay + (float)az * (float)az)) * 180.0 / M_PI;
 
   float gyroX_dps = gx / 16.4;
   float gyroY_dps = gy / 16.4;
 
-  roll = 0.95 * (roll + gyroX_dps * dt) + 0.05 * accelRoll;
+  // Pitch representará nuestro EJE X
   pitch = 0.95 * (pitch + gyroY_dps * dt) + 0.05 * accelPitch;
+  // Roll representará nuestro EJE Y
+  roll = 0.95 * (roll + gyroX_dps * dt) + 0.05 * accelRoll;
 
-  float errorPitch = SETPOINT - pitch;
+
+  // --- CÁLCULO PID EJE X (Solo afecta al D0) ---
+  float errorActualX = SETPOINT_X - pitch;
+  float proporcionalX = KpX * errorActualX;
   
-  errorIntegralPitch += (errorPitch * dt);
-  errorIntegralPitch = constrain(errorIntegralPitch, -20.0, 20.0); 
+  errorIntegralX = errorIntegralX + (errorActualX * dt);
+  errorIntegralX = constrain(errorIntegralX, -20.0, 20.0);
 
-  float derivativoPitch = (errorPitch - errorPrevioPitch) / dt;
-  float salidaPID_Pitch = (Kp * errorPitch) + (Ki * errorIntegralPitch) + (Kd * derivativoPitch);
-  errorPrevioPitch = errorPitch;
+  float integralX = KiX * errorIntegralX;
+  float derivativoX = KdX * ((errorActualX - errorPrevioX) / dt);
+  float salidaPID_X = proporcionalX + integralX + derivativoX;
 
-  if (abs(salidaPID_Pitch) < 1.0) salidaPID_Pitch = 0.0;
+  errorPrevioX = errorActualX;
 
-  int anguloPitch = CENTRO_SERVO - salidaPID_Pitch;
-  anguloPitch = constrain(anguloPitch, 60, 120);
+  // --- CÁLCULO PID EJE Y (Afecta a D1 y D2) ---
+  float errorActualY = SETPOINT_Y - roll;
+  float proporcionalY = KpY * errorActualY;
 
-  servoPitch1.write(anguloPitch);
-  servoPitch2.write(anguloPitch); 
+  errorIntegralY = errorIntegralY + (errorActualY * dt);
+  errorIntegralY = constrain(errorIntegralY, -20.0, 20.0);
 
+  float integralY = KiY * errorIntegralY;
+  float derivativoY = KdY * ((errorActualY - errorPrevioY) / dt);
+  float salidaPID_Y = proporcionalY + integralY + derivativoY;
 
-  float errorRoll = SETPOINT - roll;
+  errorPrevioY = errorActualY;
+
+  // --- BANDA MUERTA ---
+  if (abs(salidaPID_X) < 1.0) salidaPID_X = 0.0;
+  if (abs(salidaPID_Y) < 1.0) salidaPID_Y = 0.0;
+
+  // 1. El motor del pin D0 se mueve SOLO con el Eje X
+  int anguloEjeX = CENTRO_SERVO - salidaPID_X;
+  anguloEjeX = constrain(anguloEjeX, 60, 120); 
+  servo_EjeX.write(anguloEjeX);
+
+  // 2. Los motores de los pines D1 y D2 se mueven SOLO con el Eje Y
+  int anguloEjeY = CENTRO_SERVO + salidaPID_Y; 
+  anguloEjeY = constrain(anguloEjeY, 60, 120); 
   
-  errorIntegralRoll += (errorRoll * dt);
-  errorIntegralRoll = constrain(errorIntegralRoll, -20.0, 20.0);
+  servo_EjeY_1.write(anguloEjeY);
+  servo_EjeY_2.write(anguloEjeY); 
 
-  float derivativoRoll = (errorRoll - errorPrevioRoll) / dt;
-  float salidaPID_Roll = (Kp * errorRoll) + (Ki * errorIntegralRoll) + (Kd * derivativoRoll);
-  errorPrevioRoll = errorRoll;
+  Serial.print("Inclinacion_X:");
+  Serial.print(pitch);
+  Serial.print(" | Inclinacion_Y:");
+  Serial.print(roll);
+  Serial.print(" | Servo_D0:");
+  Serial.print(anguloEjeX);
+  Serial.print(" | Servos_D1_D2:");
+  Serial.println(anguloEjeY); 
 
-  if (abs(salidaPID_Roll) < 1.0) salidaPID_Roll = 0.0;
-
-  int anguloRoll = CENTRO_SERVO + salidaPID_Roll; 
-  anguloRoll = constrain(anguloRoll, 60, 120);
-
-  servoRoll.write(anguloRoll);
-
-  Serial.print("Pitch:"); Serial.print(pitch); Serial.print(",");
-  Serial.print("Roll:");  Serial.print(roll);  Serial.print(",");
-  Serial.print("Angulo_Pitch:"); Serial.print(anguloPitch); Serial.print(",");
-  Serial.print("Angulo_Roll:");  Serial.println(anguloRoll);
-
-  delay(10); 
+  delay(10);
 }

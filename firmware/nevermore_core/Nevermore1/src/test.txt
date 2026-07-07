@@ -1,0 +1,56 @@
+#include <Arduino.h>
+#include <ESP32Servo.h>
+
+Servo miServoMetal;
+Servo miServoMetal2;
+Servo miServoPlastic;
+
+// Usamos el pin físico D1 (que equivale al GPIO2), 
+// ya que comprobaste que funciona perfectamente.
+const int PIN_SERVOP = 1;
+const int PIN_SERVO = 2; 
+const int PIN_SERVO2 = 3;
+
+void setup() {
+  Serial.begin(115200);
+  
+  // Espera activa para que no te pierdas los textos por el USB
+  while (!Serial) {
+    delay(10);
+  }
+  
+  Serial.println("--- TEST DE FUERZA PARA SERVO MG90S ---");
+  
+  // Configuramos el servo con los anchos de pulso estándar
+  miServoPlastic.attach(PIN_SERVOP, 500, 2500);
+  miServoMetal.attach(PIN_SERVO, 500, 2500);
+  miServoMetal2.attach(PIN_SERVO2, 500, 2500);
+}
+
+void loop() {
+  Serial.println("Posicion: 0 grados");
+  miServoPlastic.write(0);
+  miServoMetal.write(0);
+  miServoMetal2.write(0);
+  delay(1500); // Tiempo suficiente para que el motor llegue y exija corriente
+
+  Serial.println("Posicion: 90 grados (Centro)");
+  miServoPlastic.write(90);
+  miServoMetal.write(90);
+  miServoMetal2.write(90);
+  delay(1500);
+
+  Serial.println("Posicion: 180 grados");
+  miServoPlastic.write(180);
+  miServoMetal.write(180);
+  miServoMetal2.write(180);
+  delay(1500);
+  
+  Serial.println("Volviendo a: 90 grados (Centro)");
+  miServoPlastic.write(90);
+  miServoMetal.write(90);
+  miServoMetal2.write(90);
+  delay(1500);
+  
+  Serial.println("---------------------------------------");
+}
