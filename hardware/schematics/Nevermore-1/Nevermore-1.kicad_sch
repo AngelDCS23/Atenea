@@ -2044,7 +2044,7 @@
 	)
 	(wire
 		(pts
-			(xy 181.61 50.8) (xy 181.61 57.15)
+			(xy 110.49 137.16) (xy 110.49 143.51)
 		)
 		(stroke
 			(width 0)
@@ -2084,7 +2084,7 @@
 	)
 	(wire
 		(pts
-			(xy 186.69 52.07) (xy 186.69 57.15)
+			(xy 115.57 138.43) (xy 115.57 143.51)
 		)
 		(stroke
 			(width 0)
@@ -2114,7 +2114,7 @@
 	)
 	(wire
 		(pts
-			(xy 179.07 54.61) (xy 179.07 57.15)
+			(xy 107.95 140.97) (xy 107.95 143.51)
 		)
 		(stroke
 			(width 0)
@@ -2164,7 +2164,7 @@
 	)
 	(wire
 		(pts
-			(xy 184.15 52.07) (xy 184.15 57.15)
+			(xy 113.03 138.43) (xy 113.03 143.51)
 		)
 		(stroke
 			(width 0)
@@ -2253,7 +2253,7 @@
 		(uuid "03d88fac-7b7a-4dcf-b44e-2512d2181b1d")
 	)
 	(label "GPS_TX"
-		(at 181.61 50.8 180)
+		(at 110.49 137.16 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -2293,7 +2293,7 @@
 		(uuid "74078a27-17d2-4a78-811a-ea9106f1b2a6")
 	)
 	(label "GPS_RX"
-		(at 179.07 54.61 180)
+		(at 107.95 140.97 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -2622,7 +2622,7 @@
 	)
 	(symbol
 		(lib_id "power:+5V")
-		(at 186.69 52.07 0)
+		(at 115.57 138.43 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2632,7 +2632,7 @@
 		(dnp no)
 		(uuid "398d4641-6ffa-455d-9ac2-2b45e3cfb587")
 		(property "Reference" "#PWR011"
-			(at 186.69 55.88 0)
+			(at 115.57 142.24 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2643,7 +2643,7 @@
 			)
 		)
 		(property "Value" "+5V"
-			(at 189.738 50.546 0)
+			(at 118.618 136.906 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2653,7 +2653,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 186.69 52.07 0)
+			(at 115.57 138.43 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2664,7 +2664,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 186.69 52.07 0)
+			(at 115.57 138.43 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2675,7 +2675,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+5V\""
-			(at 186.69 52.07 0)
+			(at 115.57 138.43 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2777,7 +2777,7 @@
 	)
 	(symbol
 		(lib_id "Connector_Generic:Conn_01x04")
-		(at 184.15 62.23 270)
+		(at 113.03 148.59 270)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -2788,7 +2788,7 @@
 		(fields_autoplaced yes)
 		(uuid "3ea18d2e-9bb8-4eba-8062-e13b05bdd3ef")
 		(property "Reference" "J1"
-			(at 182.88 66.04 90)
+			(at 111.76 152.4 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2798,7 +2798,7 @@
 			)
 		)
 		(property "Value" "MODULO_GPS_NEO6M"
-			(at 182.88 68.58 90)
+			(at 111.76 154.94 90)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -2808,7 +2808,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 184.15 62.23 0)
+			(at 113.03 148.59 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2819,7 +2819,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 184.15 62.23 0)
+			(at 113.03 148.59 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -2830,7 +2830,7 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)"
-			(at 184.15 62.23 0)
+			(at 113.03 148.59 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3474,7 +3474,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 184.15 52.07 180)
+		(at 113.03 138.43 180)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -3485,7 +3485,7 @@
 		(fields_autoplaced yes)
 		(uuid "6ce8db9a-9e38-4a54-81c3-b1afddc4775d")
 		(property "Reference" "#PWR010"
-			(at 184.15 45.72 0)
+			(at 113.03 132.08 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3496,7 +3496,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 184.15 46.99 0)
+			(at 113.03 133.35 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -3506,7 +3506,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 184.15 52.07 0)
+			(at 113.03 138.43 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3517,7 +3517,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 184.15 52.07 0)
+			(at 113.03 138.43 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -3528,7 +3528,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 184.15 52.07 0)
+			(at 113.03 138.43 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

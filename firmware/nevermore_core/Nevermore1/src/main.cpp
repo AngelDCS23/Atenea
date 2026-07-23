@@ -3,8 +3,15 @@
 #include "MPU6050.h"
 #include "Wire.h"
 #include <ESP32Servo.h> 
+#include <TinyGPSPlus.h>
+
+#define GPS_RX_PIN 44
+#define GPS_TX_PIN 43
 
 MPU6050 sensor;
+TinyGPSPlus gps;
+
+unsigned long ultimoAviso = 0;
 
 // --- CONFIGURACIÓN DE LOS SERVOS ---
 Servo servo_EjeX;     // El que se moverá con la inclinación X
@@ -44,10 +51,11 @@ float errorPrevioY = 0.0;
 float errorIntegralY = 0.0;
 
 void setup() {
-  Serial.begin(57600);
+  Serial.begin(115200);
   Wire.begin();
   sensor.initialize();
 
+  Serial1.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
   sensor.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
   sensor.setFullScaleAccelRange(MPU6050_ACCEL_FS_8);
 
@@ -82,6 +90,27 @@ void setup() {
 }
 
 void loop() {
+
+  while (Serial1.available() > 0) {
+    gps.encode(Serial1.read());
+  }
+
+  if (gps.location.isUpdated()) {
+    Serial.print("Latitud: "); 
+    Serial.print(gps.location.lat(), 6);
+    Serial.print(" | Longitud: "); 
+    Serial.print(gps.location.lng(), 6);
+    Serial.print(" | Altitud: "); 
+    Serial.print(gps.altitude.meters());
+    Serial.print(" m | Satélites conectados: "); 
+    Serial.println(gps.satellites.value());
+  }
+
+  if (millis() - ultimoAviso > 5000 && gps.satellites.value() == 0) {
+    Serial.println("Buscando satélites...");
+    ultimoAviso = millis();
+  }
+
   sensor.getAcceleration(&ax, &ay, &az);
   sensor.getRotation(&gx, &gy, &gz);
 
@@ -152,6 +181,4 @@ void loop() {
   Serial.print(anguloEjeX);
   Serial.print(" | Servos_D1_D2:");
   Serial.println(anguloEjeY); 
-
-  delay(10);
 }
